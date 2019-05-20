@@ -6,9 +6,16 @@
 #include <vector>
 
 //#define Need_QuoteUpdate_Data
-#define Need_TradeReport_Data
+//#define Need_TradeReport_Data
+//#define Need_OfficialPrice_Data
+//#define Need_TradeBreak_Data
+#define Need_AuctionInformation_Data
+
 std::string filename_quotesupdate="export.quotes_update.csv";
 std::string filename_tradereport="export.trade_report.csv";
+std::string filename_officialprice="export.official_price.csv";
+std::string filename_tradebreak="export.trade_break.csv";
+std::string filename_auctioninfo="export.auctioninfo.csv";
 
 int main(int argc, char* argv[]) {
     std::string filename;
@@ -43,6 +50,41 @@ int main(int argc, char* argv[]) {
     tradereport_out_stream << "Timestamp,Symbol,Size,Price,TradeId,bit7_F,bit6_T,bit5_I,bit4_8,bit3_X,Flags" << std::endl;
 #endif
 
+#ifdef Need_OfficialPrice_Data
+    std::ofstream officialprice_out_stream;
+    try {
+        officialprice_out_stream.open(filename_officialprice);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_tradereport << std::endl;
+        return 1;
+    }
+    // Add the header.
+    officialprice_out_stream << "Timestamp,Symbol,Type,Price" << std::endl;
+#endif
+
+#ifdef Need_TradeBreak_Data
+    std::ofstream tradebreak_out_stream;
+    try {
+        tradebreak_out_stream.open(filename_tradebreak);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_tradebreak << std::endl;
+        return 1;
+    }
+    // Add the header.
+    tradebreak_out_stream << "Timestamp,Symbol,Size,Price,TradeId,bit7_F,bit6_T,bit5_I,bit4_8,bit3_X,Flags" << std::endl;
+#endif
+
+
+#ifdef Need_AuctionInformation_Data
+    std::ofstream auctioninfo_out_stream;
+    try {
+        auctioninfo_out_stream.open(filename_auctioninfo);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_tradebreak << std::endl;
+        return 1;
+    }
+    auctioninfo_out_stream<< "Timestamp,Symbol,AuctionType,PairedShares,ReferencePrice,IndicativeClear,ImbalanceShares,ImbalanceSide,ExtensionNumber,SchdAuctionTime,BookClearPrice,CollarRefPrice,LwrAuctionCollar,UprAuctionCollar" << std::endl;
+#endif
 
     // Initialize decoder object with file path.
     std::string input_file(argv[1]);
@@ -92,9 +134,6 @@ int main(int argc, char* argv[]) {
 //        TradingStatus = 0x48,
 //        OperationalHaltStatus = 0x4f,
 //        ShortSalePriceTestStatus = 0x50,
-//        QuoteUpdate = 0x51,
-//        OfficialPrice = 0x58,
-//        TradeBreak = 0x42,
 //        AuctionInformation = 0x41,
 //        PriceLevelUpdateBuy = 0x38,
 //        PriceLevelUpdateSell = 0x35
@@ -119,13 +158,86 @@ int main(int argc, char* argv[]) {
             }
         }
 #endif
+
+#ifdef Need_OfficialPrice_Data
+        if (msg_ptr->GetMessageType() == MessageType::OfficialPrice) {
+            auto price_msg = dynamic_cast<OfficialPriceMessage*>(msg_ptr.get());
+            if (price_msg) {
+                officialprice_out_stream 
+                    << price_msg->timestamp << ","
+                    << price_msg->symbol << ","
+                    << ((uint8_t)price_msg->price_type) << ","
+                    << price_msg->price << std::endl;
+            }
+        }
+#endif
+
+
+#ifdef Need_TradeBreak_Data
+        if (msg_ptr->GetMessageType() == MessageType::TradeBreak) {
+            auto break_msg = dynamic_cast<TradeReportMessage*>(msg_ptr.get());
+            if (break_msg) {
+                tradebreak_out_stream 
+                    << break_msg->timestamp << ","
+                    << break_msg->symbol << ","
+                    << break_msg->size << ","
+                    << break_msg->price << ","
+                    << break_msg->trade_id << ","
+                    << (uint16_t)((break_msg->flags & 0x80)/0x80) << "," 
+                    << (uint16_t)((break_msg->flags & 0x40)/0x40) << "," 
+                    << (uint16_t)((break_msg->flags & 0x20)/0x20) << "," 
+                    << (uint16_t)((break_msg->flags & 0x10)/0x10) << "," 
+                    << (uint16_t)((break_msg->flags & 0x08)/0x08) << "," 
+                    << (uint16_t)break_msg->flags << std::endl;
+            }
+        }
+#endif
+
+
+#ifdef Need_AuctionInformation_Data
+        if (msg_ptr->GetMessageType() == MessageType::AuctionInformation) {
+            auto auctioninfo_msg = dynamic_cast<AuctionInformationMessage*>(msg_ptr.get());
+            if (auctioninfo_msg) {
+                auctioninfo_out_stream 
+                    << auctioninfo_msg->timestamp << ","
+                    << auctioninfo_msg->symbol << ","
+                    << static_cast<char>(auctioninfo_msg->auction_type) << ","
+                    << auctioninfo_msg->paired_shares << ","
+                    << auctioninfo_msg->reference_price << ","
+                    << auctioninfo_msg->indicative_clearing_price << ","
+                    << auctioninfo_msg->imbalance_shares << ","
+                    << static_cast<char>(auctioninfo_msg->imbalance_side) << ","
+                    << auctioninfo_msg->extension_number << ","
+                    << auctioninfo_msg->scheduled_auction_time << ","
+                    << auctioninfo_msg->auction_book_clearing_price << ","
+                    << auctioninfo_msg->collar_reference_price << ","
+                    << auctioninfo_msg->lower_auction_collar << ","
+                    << auctioninfo_msg->upper_auction_collar << std::endl;
+            }
+        }
+#endif
+
     }
 #ifdef Need_QuoteUpdate_Data
     quoteupdate_out_stream.close();
 #endif
+
 #ifdef Need_TradeReport_Data
     tradereport_out_stream.close();
 #endif
+
+#ifdef Need_OfficialPrice_Data
+    officialprice_out_stream.close();
+#endif
+
+#ifdef Need_TradeBreak_Data
+    tradebreak_out_stream.close();
+#endif
+
+#ifdef Need_AuctionInformation_Data
+    auctioninfo_out_stream.close();
+#endif
+
     return 0;
 }
 
