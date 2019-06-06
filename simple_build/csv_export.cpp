@@ -9,13 +9,21 @@
 //#define Need_TradeReport_Data
 //#define Need_OfficialPrice_Data
 //#define Need_TradeBreak_Data
-#define Need_AuctionInformation_Data
+//#define Need_AuctionInformation_Data
+//#define Need_PriceLevelUpdate_Data
+
+//#define Need_AllMsgType_Data
+
+#define Need_SystemEventMessage_Data
 
 std::string filename_quotesupdate="export.quotes_update.csv";
 std::string filename_tradereport="export.trade_report.csv";
 std::string filename_officialprice="export.official_price.csv";
 std::string filename_tradebreak="export.trade_break.csv";
 std::string filename_auctioninfo="export.auctioninfo.csv";
+std::string filename_pricelevelupdate="export.pricelevelupdate.csv";
+std::string filename_all_msgtype="export.all.msgtype.txt";
+std::string filename_systemEventMessage="export.system_event.csv";
 
 int main(int argc, char* argv[]) {
     std::string filename;
@@ -24,6 +32,16 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage: iex_pcap_decoder <input_pcap>" << std::endl;
         return 1;
     }
+
+#ifdef Need_AllMsgType_Data
+    std::ofstream allmsgtype_out_stream;
+    try {
+        allmsgtype_out_stream.open(filename_all_msgtype);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_all_msgtype << std::endl;
+        return 1;
+    }
+#endif  
 
 #ifdef Need_QuoteUpdate_Data
     // Open a file stream for writing output to csv.
@@ -86,6 +104,29 @@ int main(int argc, char* argv[]) {
     auctioninfo_out_stream<< "Timestamp,Symbol,AuctionType,PairedShares,ReferencePrice,IndicativeClear,ImbalanceShares,ImbalanceSide,ExtensionNumber,SchdAuctionTime,BookClearPrice,CollarRefPrice,LwrAuctionCollar,UprAuctionCollar" << std::endl;
 #endif
 
+#ifdef Need_PriceLevelUpdate_Data
+    std::ofstream pricelevelupdate_out_stream;
+    try {
+        pricelevelupdate_out_stream.open(filename_pricelevelupdate);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_tradebreak << std::endl;
+        return 1;
+    }
+    pricelevelupdate_out_stream<< "Timestamp,Symbol,Type,Flags,Size,Price" << std::endl;
+  
+#endif
+
+#ifdef Need_SystemEventMessage_Data
+    std::ofstream systemevent_out_stream;
+    try {
+        systemevent_out_stream.open(filename_systemEventMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_systemEventMessage << std::endl;
+        return 1;
+    }
+    systemevent_out_stream<< "Timestamp,SystemEvent" << std::endl;
+#endif  
+
     // Initialize decoder object with file path.
     std::string input_file(argv[1]);
     IEXDecoder decoder;
@@ -100,6 +141,10 @@ int main(int argc, char* argv[]) {
 
     // Main loop to loop through all messages.
     for (; ret_code == ReturnCode::Success; ret_code = decoder.GetNextMessage(msg_ptr)) {
+
+#ifdef Need_AllMsgType_Data
+        allmsgtype_out_stream << "0x" << std::hex << ((uint16_t)msg_ptr->GetMessageType()) << std::dec << std::endl;
+#endif     
 
         // For quick message introspection:
         // msg_ptr->Print();
@@ -134,9 +179,6 @@ int main(int argc, char* argv[]) {
 //        TradingStatus = 0x48,
 //        OperationalHaltStatus = 0x4f,
 //        ShortSalePriceTestStatus = 0x50,
-//        AuctionInformation = 0x41,
-//        PriceLevelUpdateBuy = 0x38,
-//        PriceLevelUpdateSell = 0x35
 #endif
 
 #ifdef Need_TradeReport_Data
@@ -217,7 +259,39 @@ int main(int argc, char* argv[]) {
         }
 #endif
 
+
+#ifdef Need_PriceLevelUpdate_Data
+        if (msg_ptr->GetMessageType() == MessageType::PriceLevelUpdateBuy
+             || msg_ptr->GetMessageType() == MessageType::PriceLevelUpdateSell) {
+            auto priceLevelUpdate_msg = dynamic_cast<PriceLevelUpdateMessage*>(msg_ptr.get());
+            if (priceLevelUpdate_msg) {
+                pricelevelupdate_out_stream 
+                    << priceLevelUpdate_msg->timestamp << ","
+                    << priceLevelUpdate_msg->symbol << ","
+                    << ((uint16_t)msg_ptr->GetMessageType()) << ","
+                    << ((uint16_t)priceLevelUpdate_msg->flags) << ","
+                    << priceLevelUpdate_msg->size << ","
+                    << priceLevelUpdate_msg->price << std::endl;
+            }
+        }
+#endif
+
+#ifdef Need_SystemEventMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::SystemEvent) {
+            auto systemEventMessage_msg = dynamic_cast<SystemEventMessage*>(msg_ptr.get());
+            if (systemEventMessage_msg) {
+                systemevent_out_stream 
+                    << systemEventMessage_msg->timestamp << ","
+                    << static_cast<char> (systemEventMessage_msg->system_event) << std::endl;
+            }
+        }
+#endif
+
     }
+#ifdef Need_AllMsgType_Data
+    allmsgtype_out_stream.close();
+#endif     
+
 #ifdef Need_QuoteUpdate_Data
     quoteupdate_out_stream.close();
 #endif
@@ -238,6 +312,13 @@ int main(int argc, char* argv[]) {
     auctioninfo_out_stream.close();
 #endif
 
+#ifdef Need_PriceLevelUpdate_Data
+    pricelevelupdate_out_stream.close();
+#endif
+
+#ifdef Need_SystemEventMessage_Data
+    systemevent_out_stream.close();
+#endif
     return 0;
 }
 
