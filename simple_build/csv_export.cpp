@@ -5,16 +5,18 @@
 #include <string>
 #include <vector>
 
+//#define Need_AllMsgType_Data
+
 //#define Need_QuoteUpdate_Data
 //#define Need_TradeReport_Data
 //#define Need_OfficialPrice_Data
 //#define Need_TradeBreak_Data
 //#define Need_AuctionInformation_Data
 //#define Need_PriceLevelUpdate_Data
-
-//#define Need_AllMsgType_Data
-
-#define Need_SystemEventMessage_Data
+//#define Need_SystemEventMessage_Data
+//#define Need_SecurityDirectoryMessage_Data
+//#define Need_SecurityEventMessage_Data
+#define Need_TradingStatusMessage_Data
 
 std::string filename_quotesupdate="export.quotes_update.csv";
 std::string filename_tradereport="export.trade_report.csv";
@@ -24,6 +26,9 @@ std::string filename_auctioninfo="export.auctioninfo.csv";
 std::string filename_pricelevelupdate="export.pricelevelupdate.csv";
 std::string filename_all_msgtype="export.all.msgtype.txt";
 std::string filename_systemEventMessage="export.system_event.csv";
+std::string filename_securityDirectoryMessage="export.security_directory.csv"; 
+std::string filename_securityEventMessage="export.security_event.csv"; 
+std::string filename_tradingStatusMessage="export.trading_status.csv"; 
 
 int main(int argc, char* argv[]) {
     std::string filename;
@@ -53,7 +58,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     // Add the header.
-    quoteupdate_out_stream << "Timestamp,Symbol,BidSize,BidPrice,AskSize,AskPrice" << std::endl;
+    quoteupdate_out_stream << "Timestamp,Symbol,BidSize,BidPrice,AskSize,AskPrice,bit7_A,bit6_P,Flags" << std::endl;
 #endif
 
 #ifdef Need_TradeReport_Data
@@ -127,6 +132,43 @@ int main(int argc, char* argv[]) {
     systemevent_out_stream<< "Timestamp,SystemEvent" << std::endl;
 #endif  
 
+#ifdef Need_SecurityDirectoryMessage_Data
+    std::ofstream securitydirectory_out_stream;
+    try {
+        securitydirectory_out_stream.open(filename_securityDirectoryMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_securityDirectoryMessage<< std::endl;
+        return 1;
+    }
+    securitydirectory_out_stream<<"Timestamp,Symbol,RoundLotSize,AdjustPOCPrice,LULDTier,bit7_T,bit6_W,bit5_E,Flags" << std::endl;
+
+#endif
+
+
+#ifdef Need_SecurityEventMessage_Data
+    std::ofstream securityevent_out_stream;
+    try {
+        securityevent_out_stream.open(filename_securityEventMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_securityEventMessage<< std::endl;
+        return 1;
+    }
+    securityevent_out_stream <<"Timestamp,Symbol,Event" << std::endl;
+#endif
+
+
+#ifdef Need_TradingStatusMessage_Data
+    std::ofstream tradingstatus_out_stream;
+    try {
+        tradingstatus_out_stream.open(filename_tradingStatusMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_tradingStatusMessage<< std::endl;
+        return 1;
+    }
+    tradingstatus_out_stream <<  "Timestamp,Symbol,Status,Reason" << std::endl;
+#endif
+
+
     // Initialize decoder object with file path.
     std::string input_file(argv[1]);
     IEXDecoder decoder;
@@ -165,18 +207,15 @@ int main(int argc, char* argv[]) {
                     << quote_msg->bid_size  << ","
                     << quote_msg->bid_price << ","
                     << quote_msg->ask_size  << ","
-                    << quote_msg->ask_price << std::endl;
+                    << quote_msg->ask_price << ","
+                    << (uint16_t)((quote_msg->flags & 0x80)/0x80) << "," 
+                    << (uint16_t)((quote_msg->flags & 0x40)/0x40) << "," 
+                    << (uint16_t)quote_msg->flags << std::endl;
             }
         }
 #endif
 
 #if 0
-//        NoData = 0xFF,
-//        StreamHeader = 0x00,
-//        SystemEvent = 0x53,
-//        SecurityDirectory = 0x44,
-//        SecurityEvent = 0x45,
-//        TradingStatus = 0x48,
 //        OperationalHaltStatus = 0x4f,
 //        ShortSalePriceTestStatus = 0x50,
 #endif
@@ -287,6 +326,51 @@ int main(int argc, char* argv[]) {
         }
 #endif
 
+#ifdef Need_SecurityDirectoryMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::SecurityDirectory) {
+            auto securityDirectoryMessage_msg = dynamic_cast<SecurityDirectoryMessage*>(msg_ptr.get());
+            if (securityDirectoryMessage_msg) {
+                securitydirectory_out_stream 
+                    << securityDirectoryMessage_msg->timestamp << ","
+                    << securityDirectoryMessage_msg->symbol << ","
+                    << securityDirectoryMessage_msg->round_lot_size << ","
+                    << securityDirectoryMessage_msg->adjusted_POC_price << ","
+                    << static_cast<uint16_t>(securityDirectoryMessage_msg->LULD_tier) << ","
+                    << (uint16_t)((securityDirectoryMessage_msg->flags & 0x80)/0x80) << "," 
+                    << (uint16_t)((securityDirectoryMessage_msg->flags & 0x40)/0x40) << "," 
+                    << (uint16_t)((securityDirectoryMessage_msg->flags & 0x20)/0x20) << "," 
+                    << (uint16_t)securityDirectoryMessage_msg->flags << std::endl; 
+            }
+        }
+#endif
+
+
+#ifdef Need_SecurityEventMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::SecurityEvent) {
+            auto securityEventMessage_msg = dynamic_cast<SecurityEventMessage*>(msg_ptr.get());
+            if (securityEventMessage_msg) {
+                securityevent_out_stream 
+                    << securityEventMessage_msg->timestamp << ","
+                    << securityEventMessage_msg->symbol << ","
+                    << static_cast<char>(securityEventMessage_msg->security_event) << std::endl;
+            }
+        }
+#endif
+
+
+#ifdef Need_TradingStatusMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::TradingStatus) {
+            auto tradingStatusMessage_msg = dynamic_cast<TradingStatusMessage*>(msg_ptr.get());
+            if (tradingStatusMessage_msg) {
+                tradingstatus_out_stream 
+                    << tradingStatusMessage_msg->timestamp << ","
+                    << tradingStatusMessage_msg->symbol << ","
+                    << static_cast<char>(tradingStatusMessage_msg->trading_status)  << ","
+                    << tradingStatusMessage_msg->reason << std::endl;
+            }
+        }
+#endif
+
     }
 #ifdef Need_AllMsgType_Data
     allmsgtype_out_stream.close();
@@ -318,6 +402,18 @@ int main(int argc, char* argv[]) {
 
 #ifdef Need_SystemEventMessage_Data
     systemevent_out_stream.close();
+#endif
+
+#ifdef Need_SecurityDirectoryMessage_Data
+    securitydirectory_out_stream.close();
+#endif
+
+#ifdef Need_SecurityEventMessage_Data
+    securityevent_out_stream.close(); 
+#endif
+
+#ifdef Need_TradingStatusMessage_Data
+    tradingstatus_out_stream.close();
 #endif
     return 0;
 }
