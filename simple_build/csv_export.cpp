@@ -5,44 +5,158 @@
 #include <string>
 #include <vector>
 
+#include <string>
+#include <vector>
+#include <iostream>
+
+#if defined _MSC_VER
+    #include <direct.h>
+    #include <io.h> 
+    #define access    _access_s
+#elif defined __GNUC__
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+#endif
+
+void createDir(const std::string& dir) {
+#if defined _MSC_VER
+    _mkdir(dir.data());
+#elif defined __GNUC__
+    mkdir(dir.data(), 0777);
+#endif
+}
+
+bool FileExists(const std::string &Filename)
+{
+    return access(Filename.c_str(), 0) == 0;
+}
+
+
+void SplitString(const std::string& s, std::vector<std::string>& v, const std::string& c)
+{
+    std::string::size_type pos1, pos2;
+    pos2 = s.find(c);
+    pos1 = 0;
+    while(std::string::npos != pos2) {
+        v.push_back(s.substr(pos1, pos2-pos1));
+        pos1 = pos2 + c.size();
+        pos2 = s.find(c, pos1);
+    }
+    if(pos1 != s.length()) {
+        v.push_back(s.substr(pos1));
+    }
+}
+
 //#define Need_AllMsgType_Data
 
-//#define Need_QuoteUpdate_Data
-//#define Need_TradeReport_Data
-//#define Need_OfficialPrice_Data
-//#define Need_TradeBreak_Data
-//#define Need_AuctionInformation_Data
-//#define Need_PriceLevelUpdate_Data
-//#define Need_SystemEventMessage_Data
-//#define Need_SecurityDirectoryMessage_Data
-//#define Need_SecurityEventMessage_Data
+#define Need_QuoteUpdate_Data
+#define Need_TradeReport_Data
+#define Need_OfficialPrice_Data
+#define Need_TradeBreak_Data
+#define Need_AuctionInformation_Data
+#define Need_PriceLevelUpdate_Data
+#define Need_SystemEventMessage_Data
+#define Need_SecurityDirectoryMessage_Data
+#define Need_SecurityEventMessage_Data
 #define Need_TradingStatusMessage_Data
+#define Need_OperationalHaltStatusMessage_Data
+#define Need_ShortSalePriceTestStatusMessage_Data
 
-std::string filename_quotesupdate="export.quotes_update.csv";
-std::string filename_tradereport="export.trade_report.csv";
-std::string filename_officialprice="export.official_price.csv";
-std::string filename_tradebreak="export.trade_break.csv";
-std::string filename_auctioninfo="export.auctioninfo.csv";
-std::string filename_pricelevelupdate="export.pricelevelupdate.csv";
-std::string filename_all_msgtype="export.all.msgtype.txt";
-std::string filename_systemEventMessage="export.system_event.csv";
-std::string filename_securityDirectoryMessage="export.security_directory.csv"; 
-std::string filename_securityEventMessage="export.security_event.csv"; 
-std::string filename_tradingStatusMessage="export.trading_status.csv"; 
+const char szfilename_all_msgtype[]="export.all.msgtype.txt";
 
-int main(int argc, char* argv[]) {
-    std::string filename;
-    // Get the input pcap file as an argument.
+const char szfilename_quotesupdate[]="export.quotes_update.csv";
+const char szfilename_tradereport[]="export.trade_report.csv";
+const char szfilename_officialprice[]="export.official_price.csv";
+const char szfilename_tradebreak[]="export.trade_break.csv";
+const char szfilename_auctioninfo[]="export.auctioninfo.csv";
+const char szfilename_pricelevelupdate[]="export.pricelevelupdate.csv";
+const char szfilename_systemEventMessage[]="export.system_event.csv";
+const char szfilename_securityDirectoryMessage[]="export.security_directory.csv"; 
+const char szfilename_securityEventMessage[]="export.security_event.csv"; 
+const char szfilename_tradingStatusMessage[]="export.trading_status.csv"; 
+const char szfilename_operationalHaltStatusMessage[]="export.operational_halt_status.csv"; 
+const char szfilename_shortSalePriceTestStatusMessage[]="export.shortsaleprice_test_status.csv"; 
+
+
+std::string filename_all_msgtype;
+
+std::string filename_quotesupdate;
+std::string filename_tradereport;
+std::string filename_officialprice;
+std::string filename_tradebreak;
+std::string filename_auctioninfo;
+std::string filename_pricelevelupdate;
+std::string filename_systemEventMessage;
+std::string filename_securityDirectoryMessage;
+std::string filename_securityEventMessage;
+std::string filename_tradingStatusMessage;
+std::string filename_operationalHaltStatusMessage;
+std::string filename_shortSalePriceTestStatusMessage;
+
+void make_file_name_with_date_path(std::string & strFilename, const std::string & date_as_path, const char* szfilename)
+{
+    strFilename= "./";
+    strFilename+= date_as_path;
+    strFilename+=+"/";
+    strFilename+=szfilename;   
+}
+
+int main(int argc, char* argv[]) 
+{
     if (argc < 2) {
         std::cout << "Usage: iex_pcap_decoder <input_pcap>" << std::endl;
-        return 1;
+        return -1;
     }
+
+    std::string input_file(argv[1]);
+
+    std::vector<std::string>  vector_paths;
+    SplitString(input_file,vector_paths,"/");
+    std::string filename=vector_paths[vector_paths.size()-1];
+
+    std::vector<std::string>  vector_patterns;
+    SplitString(filename,vector_patterns,"_");
+    if (vector_patterns.size() <= 3) {
+        std::cout << "file name not contain date part :" << filename << std::endl;
+        return -2;
+    }
+    std::string date_as_path = vector_patterns[3];
+
+
+    if (FileExists(date_as_path)) {
+        std::cout << date_as_path << "  " << "first check dir exists" << std::endl;
+    }
+    else {
+        std::cout << date_as_path << "  " << "dir need create" << std::endl;
+        createDir(date_as_path);
+        if (FileExists(date_as_path)) {
+            std::cout << date_as_path << "  " << "after create dir exists" << std::endl;
+        }
+    }
+
+    make_file_name_with_date_path(filename_all_msgtype,date_as_path,szfilename_all_msgtype);
+
+    make_file_name_with_date_path(filename_quotesupdate,date_as_path,szfilename_quotesupdate);
+    make_file_name_with_date_path(filename_tradereport,date_as_path,szfilename_tradereport);
+    make_file_name_with_date_path(filename_officialprice,date_as_path,szfilename_officialprice);
+    make_file_name_with_date_path(filename_tradebreak,date_as_path,szfilename_tradebreak);
+    make_file_name_with_date_path(filename_auctioninfo,date_as_path,szfilename_auctioninfo);
+    make_file_name_with_date_path(filename_pricelevelupdate,date_as_path,szfilename_pricelevelupdate);
+    make_file_name_with_date_path(filename_systemEventMessage,date_as_path,szfilename_systemEventMessage);
+    make_file_name_with_date_path(filename_securityDirectoryMessage,date_as_path,szfilename_securityDirectoryMessage);
+    make_file_name_with_date_path(filename_securityEventMessage,date_as_path,szfilename_securityEventMessage);
+    make_file_name_with_date_path(filename_tradingStatusMessage,date_as_path,szfilename_tradingStatusMessage);
+    make_file_name_with_date_path(filename_operationalHaltStatusMessage,date_as_path,szfilename_operationalHaltStatusMessage);
+    make_file_name_with_date_path(filename_shortSalePriceTestStatusMessage,date_as_path,szfilename_shortSalePriceTestStatusMessage);
+
 
 #ifdef Need_AllMsgType_Data
     std::ofstream allmsgtype_out_stream;
     try {
         allmsgtype_out_stream.open(filename_all_msgtype);
-    } catch (...) {
+    } 
+    catch (...) {
         std::cout << "Exception thrown opening output file:" << filename_all_msgtype << std::endl;
         return 1;
     }
@@ -57,7 +171,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Exception thrown opening output file:" << filename_quotesupdate << std::endl;
         return 1;
     }
-    // Add the header.
+
     quoteupdate_out_stream << "Timestamp,Symbol,BidSize,BidPrice,AskSize,AskPrice,bit7_A,bit6_P,Flags" << std::endl;
 #endif
 
@@ -69,7 +183,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Exception thrown opening output file:" << filename_tradereport << std::endl;
         return 1;
     }
-    // Add the header.
+
     tradereport_out_stream << "Timestamp,Symbol,Size,Price,TradeId,bit7_F,bit6_T,bit5_I,bit4_8,bit3_X,Flags" << std::endl;
 #endif
 
@@ -81,7 +195,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Exception thrown opening output file:" << filename_tradereport << std::endl;
         return 1;
     }
-    // Add the header.
+
     officialprice_out_stream << "Timestamp,Symbol,Type,Price" << std::endl;
 #endif
 
@@ -93,7 +207,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Exception thrown opening output file:" << filename_tradebreak << std::endl;
         return 1;
     }
-    // Add the header.
+
     tradebreak_out_stream << "Timestamp,Symbol,Size,Price,TradeId,bit7_F,bit6_T,bit5_I,bit4_8,bit3_X,Flags" << std::endl;
 #endif
 
@@ -168,9 +282,28 @@ int main(int argc, char* argv[]) {
     tradingstatus_out_stream <<  "Timestamp,Symbol,Status,Reason" << std::endl;
 #endif
 
+#ifdef Need_OperationalHaltStatusMessage_Data
+    std::ofstream operationalhaltstatus_out_stream;
+    try {
+        operationalhaltstatus_out_stream.open(filename_operationalHaltStatusMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_operationalHaltStatusMessage << std::endl;
+        return 1;
+    }
+    operationalhaltstatus_out_stream << "Timestamp,Symbol,OperationalHaltStatus" << std::endl;
+#endif
 
-    // Initialize decoder object with file path.
-    std::string input_file(argv[1]);
+#ifdef Need_ShortSalePriceTestStatusMessage_Data
+    std::ofstream shortsalepriceteststatus_out_stream;
+    try {
+        shortsalepriceteststatus_out_stream.open(filename_shortSalePriceTestStatusMessage);
+    } catch (...) {
+        std::cout << "Exception thrown opening output file:" << filename_shortSalePriceTestStatusMessage << std::endl;
+        return 1;
+    }
+    shortsalepriceteststatus_out_stream << "Timestamp,Symbol,Status,Detail" << std::endl;
+#endif
+
     IEXDecoder decoder;
     if (!decoder.OpenFileForDecoding(input_file)) {
         std::cout << "Failed to open file '" << input_file << "'." << std::endl;
@@ -215,10 +348,6 @@ int main(int argc, char* argv[]) {
         }
 #endif
 
-#if 0
-//        OperationalHaltStatus = 0x4f,
-//        ShortSalePriceTestStatus = 0x50,
-#endif
 
 #ifdef Need_TradeReport_Data
         if (msg_ptr->GetMessageType() == MessageType::TradeReport) {
@@ -371,6 +500,33 @@ int main(int argc, char* argv[]) {
         }
 #endif
 
+
+#ifdef Need_OperationalHaltStatusMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::OperationalHaltStatus) {
+            auto operationalHaltStatusMessage_msg = dynamic_cast<OperationalHaltStatusMessage*>(msg_ptr.get());
+            if (operationalHaltStatusMessage_msg) {
+                operationalhaltstatus_out_stream 
+                    << operationalHaltStatusMessage_msg->timestamp << ","
+                    << operationalHaltStatusMessage_msg->symbol << ","
+                    << static_cast<char>(operationalHaltStatusMessage_msg->operational_halt_status)  << std::endl;
+            }
+        }
+#endif
+
+#ifdef Need_ShortSalePriceTestStatusMessage_Data
+        if (msg_ptr->GetMessageType() == MessageType::ShortSalePriceTestStatus) {
+            auto shortSalePriceTestStatusMessage_msg = dynamic_cast<ShortSalePriceTestStatusMessage*>(msg_ptr.get());
+            if (shortSalePriceTestStatusMessage_msg) {
+               shortsalepriceteststatus_out_stream 
+                    << shortSalePriceTestStatusMessage_msg->timestamp << ","
+                    << shortSalePriceTestStatusMessage_msg->symbol << ","
+                    << static_cast<uint16_t>(shortSalePriceTestStatusMessage_msg->short_sale_test_in_effect) << ","
+                    << static_cast<char>(shortSalePriceTestStatusMessage_msg->detail) << std::endl;
+            }
+        }
+#endif
+
+
     }
 #ifdef Need_AllMsgType_Data
     allmsgtype_out_stream.close();
@@ -415,6 +571,15 @@ int main(int argc, char* argv[]) {
 #ifdef Need_TradingStatusMessage_Data
     tradingstatus_out_stream.close();
 #endif
+
+#ifdef Need_OperationalHaltStatusMessage_Data
+    operationalhaltstatus_out_stream.close(); 
+#endif
+
+#ifdef Need_ShortSalePriceTestStatusMessage_Data
+    shortsalepriceteststatus_out_stream.close();
+#endif
+
     return 0;
 }
 
