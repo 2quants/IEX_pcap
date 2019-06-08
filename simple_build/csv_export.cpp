@@ -49,6 +49,8 @@ void SplitString(const std::string& s, std::vector<std::string>& v, const std::s
 }
 
 //#define Need_AllMsgType_Data
+//const char szfilename_all_msgtype[]="export.all.msgtype.txt";
+//std::string filename_all_msgtype;
 
 #define Need_QuoteUpdate_Data
 #define Need_TradeReport_Data
@@ -63,8 +65,6 @@ void SplitString(const std::string& s, std::vector<std::string>& v, const std::s
 #define Need_OperationalHaltStatusMessage_Data
 #define Need_ShortSalePriceTestStatusMessage_Data
 
-const char szfilename_all_msgtype[]="export.all.msgtype.txt";
-
 const char szfilename_quotesupdate[]="export.quotes_update.csv";
 const char szfilename_tradereport[]="export.trade_report.csv";
 const char szfilename_officialprice[]="export.official_price.csv";
@@ -77,9 +77,6 @@ const char szfilename_securityEventMessage[]="export.security_event.csv";
 const char szfilename_tradingStatusMessage[]="export.trading_status.csv"; 
 const char szfilename_operationalHaltStatusMessage[]="export.operational_halt_status.csv"; 
 const char szfilename_shortSalePriceTestStatusMessage[]="export.shortsaleprice_test_status.csv"; 
-
-
-std::string filename_all_msgtype;
 
 std::string filename_quotesupdate;
 std::string filename_tradereport;
@@ -155,8 +152,7 @@ int main(int argc, char* argv[])
     std::ofstream allmsgtype_out_stream;
     try {
         allmsgtype_out_stream.open(filename_all_msgtype);
-    } 
-    catch (...) {
+    } catch (...) {
         std::cout << "Exception thrown opening output file:" << filename_all_msgtype << std::endl;
         return 1;
     }
@@ -322,18 +318,11 @@ int main(int argc, char* argv[])
 #endif     
 
         // For quick message introspection:
-        // msg_ptr->Print();
-        // Uncommenting this will completely dominate your terminal with output.
+        // msg_ptr->Print(); //Uncommenting this will completely dominate your terminal with output.
 
-        // There are many different message types. Here we just look for quote update (L1 tick).
 #ifdef Need_QuoteUpdate_Data
         if (msg_ptr->GetMessageType() == MessageType::QuoteUpdate) {
-
-            // Cast it to the derived type.
             auto quote_msg = dynamic_cast<QuoteUpdateMessage*>(msg_ptr.get());
-
-            // Check the pointer and write all L1 ticks for ticker 'AMD' to file.
-            //if (quote_msg && quote_msg->symbol == "AMD")
             if (quote_msg) {
                 quoteupdate_out_stream << quote_msg->timestamp << ","
                     << quote_msg->symbol    << ","
@@ -347,7 +336,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
 #ifdef Need_TradeReport_Data
         if (msg_ptr->GetMessageType() == MessageType::TradeReport) {
@@ -382,7 +370,6 @@ int main(int argc, char* argv[])
         }
 #endif
 
-
 #ifdef Need_TradeBreak_Data
         if (msg_ptr->GetMessageType() == MessageType::TradeBreak) {
             auto break_msg = dynamic_cast<TradeReportMessage*>(msg_ptr.get());
@@ -402,7 +389,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
 #ifdef Need_AuctionInformation_Data
         if (msg_ptr->GetMessageType() == MessageType::AuctionInformation) {
@@ -426,7 +412,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
 #ifdef Need_PriceLevelUpdate_Data
         if (msg_ptr->GetMessageType() == MessageType::PriceLevelUpdateBuy
@@ -473,7 +458,6 @@ int main(int argc, char* argv[])
         }
 #endif
 
-
 #ifdef Need_SecurityEventMessage_Data
         if (msg_ptr->GetMessageType() == MessageType::SecurityEvent) {
             auto securityEventMessage_msg = dynamic_cast<SecurityEventMessage*>(msg_ptr.get());
@@ -485,7 +469,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
 #ifdef Need_TradingStatusMessage_Data
         if (msg_ptr->GetMessageType() == MessageType::TradingStatus) {
@@ -499,7 +482,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
 #ifdef Need_OperationalHaltStatusMessage_Data
         if (msg_ptr->GetMessageType() == MessageType::OperationalHaltStatus) {
@@ -525,7 +507,6 @@ int main(int argc, char* argv[])
             }
         }
 #endif
-
 
     }
 #ifdef Need_AllMsgType_Data
@@ -582,4 +563,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-
